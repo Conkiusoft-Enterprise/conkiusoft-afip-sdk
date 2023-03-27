@@ -20,10 +20,8 @@ const AfipWebService = require('./Class/AfipWebService');
 
 // Available Web Services
 const ElectronicBilling = require('./Class/ElectronicBilling');
-const RegisterScopeFour = require('./Class/RegisterScopeFour');
-const RegisterScopeFive = require('./Class/RegisterScopeFive');
-const RegisterScopeTen = require('./Class/RegisterScopeTen');
-const RegisterScopeThirteen = require('./Class/RegisterScopeThirteen');
+
+const ExportElectronicBilling = require('./Class/ExportElectronicBilling');
 
 /**
  * Software Development Kit for AFIP web services
@@ -126,12 +124,8 @@ function Afip(options = {}){
 		this.WSAA_URL = 'https://wsaahomo.afip.gov.ar/ws/services/LoginCms';
 	}
 
-	this.ElectronicBilling 			= new ElectronicBilling(this);
-	this.RegisterScopeFour 			= new RegisterScopeFour(this);
-	this.RegisterScopeFive 			= new RegisterScopeFive(this);
-	this.RegisterInscriptionProof 	= new RegisterScopeFive(this);
-	this.RegisterScopeTen 			= new RegisterScopeTen(this);
-	this.RegisterScopeThirteen 		= new RegisterScopeThirteen(this);
+	this.ElectronicBilling 	= new ElectronicBilling(this);
+	this.ExportElectronicBilling 	= new ExportElectronicBilling(this);
 }
 
 /**
