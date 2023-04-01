@@ -23,6 +23,9 @@ const ElectronicBilling = require('./Class/ElectronicBilling');
 
 const ExportElectronicBilling = require('./Class/ExportElectronicBilling');
 
+//Connection to s3
+const S3Connection = require('./Class/S3Connection');
+
 /**
  * Software Development Kit for AFIP web services
  * 
@@ -81,6 +84,38 @@ function Afip(options = {}){
 	 **/
 	this.CUIT;
 
+
+	/**
+	 * bucket s3 resources folder
+	 *
+	 * @var string
+	 **/
+	this.S3_BUCKET;
+
+	
+	/**
+	 * region s3 bucket allocated
+	 *
+	 * @var string
+	 **/
+	 this.S3_REGION;
+
+
+	/**
+	 * s3 bucket credential id
+	 *
+	 * @var string
+	 **/
+	this.S3_CREDENTIAL_ID;
+
+	/**
+	 * s3 bucket credential key
+	 *
+	 * @var string
+	 **/
+	 this.S3_CREDENTIAL_KEY;	
+ 
+
 	// Create an Afip instance if it is not
 	if (!(this instanceof Afip)) {return new Afip(options)}
 
@@ -113,6 +148,10 @@ function Afip(options = {}){
 	this.CUIT 		= options['CUIT'];
 	this.RES_FOLDER = options['res_folder'];
 	this.TA_FOLDER 	= options['ta_folder'];
+	this.S3_BUCKET = options['S3_BUCKET'];
+	this.S3_REGION = options['S3_REGION'];
+	this.S3_CREDENTIAL_ID = options['S3_CREDENTIAL_ID'];
+	this.S3_CREDENTIAL_KEY = options['S3_CREDENTIAL_KEY'];
 	this.CERT 		= path.resolve(this.RES_FOLDER, options['cert']);
 	this.PRIVATEKEY = path.resolve(this.RES_FOLDER, options['key']);
 	this.WSAA_WSDL 	= path.resolve(__dirname, 'Afip_res/', 'wsaa.wsdl');
@@ -134,31 +173,34 @@ function Afip(options = {}){
  * @param service Service for token authorization
  **/
 Afip.prototype.GetServiceTA = async function(service, firstTry = true) {
-	// Declare token authorization file path
-	const taFilePath = path.resolve(
-		this.TA_FOLDER,
-		`TA-${this.options['CUIT']}-${service}${this.options['production'] ? '-production' : ''}.json`
-	);
 
-	// Check if token authorization file exists
-	const taFileAccessError = await new Promise((resolve) => {
-		fs.access(taFilePath, fs.constants.F_OK, resolve);
-	}); 
+	const _s3Connection = new S3Connection(this.S3_REGION,this.S3_CREDENTIAL_ID,this.S3_CREDENTIAL_KEY);
 
-	// If have access to token authorization file
-	if (!taFileAccessError) {
-		const taData = require(taFilePath);
+	// Declare token authorization file name
+	const taFilePath = `TA-${this.options['CUIT']}-${service}${this.options['production'] ? '-production' : ''}.json`
+
+	// Check if token authorization exists
+	let afipDataToken = null;
+
+	try{
+	    afipDataToken = await _s3Connection.readFileS3(taFilePath);
+	}
+	catch(e){
+		console.log(e);
+		throw(e);
+	}
+
+	// If have access to token authorization
+	if (afipDataToken) {
 		const actualTime = new Date(Date.now() + 600000);
-		const expirationTime = new Date(taData.header[1].expirationtime);
 
-		// Delete TA cache
-		delete require.cache[require.resolve(taFilePath)];
+		const expirationTime = new Date(afipDataToken.header[1].expirationtime);
 
 		if (actualTime < expirationTime) {
 			// Return token authorization
 			return {
-				token : taData.credentials.token,
-				sign : taData.credentials.sign
+				token : afipDataToken.credentials.token,
+				sign : afipDataToken.credentials.sign
 			}
 		}
 	}
@@ -251,17 +293,16 @@ Afip.prototype.CreateServiceTA = async function(service) {
 	// Parse loginCmsReturn to JSON 
 	const res = await xmlParser.parseStringPromise(loginCmsResult.loginCmsReturn); 
 
+	//Create s3 connection
+	const _s3Connection = new S3Connection(this.S3_REGION,this.S3_CREDENTIAL_ID,this.S3_CREDENTIAL_KEY);
+
 	// Declare token authorization file path
-	const taFilePath = path.resolve(
-		this.TA_FOLDER,
-		`TA-${this.options['CUIT']}-${service}${this.options['production'] ? '-production' : ''}.json`
-	);
+	const taFileName = `TA-${this.options['CUIT']}-${service}${this.options['production'] ? '-production' : ''}.json`
 	
 	// Save Token authorization data to json file
 	await (new Promise((resolve, reject) => {
-		fs.writeFile(taFilePath, JSON.stringify(res.loginticketresponse), (err) => {
-			if (err) {reject(err);return;}
-			resolve();
+		_s3Connection.writeFileS3(taFileName, JSON.stringify(res.loginticketresponse)).then(r => resolve()).catch(e =>{
+			reject();
 		});
 	}));
 }
