@@ -133,7 +133,6 @@ function Afip(options = {}){
 	if (!options.hasOwnProperty('cert')) {options['cert'] = 'cert';}
 	if (!options.hasOwnProperty('key')) {options['key'] = 'key';}
 	if (!options.hasOwnProperty('res_folder')) {options['res_folder'] = __dirname+'/Afip_res/';}
-	if (!options.hasOwnProperty('ta_folder')) {options['ta_folder'] = __dirname+'/Afip_res/';}
 	if (options['production'] !== true) {options['production'] = false;}
 
 	this.mixpanelRegister['distinct_id'] = options['CUIT'];
@@ -147,7 +146,6 @@ function Afip(options = {}){
 
 	this.CUIT 		= options['CUIT'];
 	this.RES_FOLDER = options['res_folder'];
-	this.TA_FOLDER 	= options['ta_folder'];
 	this.S3_BUCKET = options['S3_BUCKET'];
 	this.S3_REGION = options['S3_REGION'];
 	this.S3_CREDENTIAL_ID = options['S3_CREDENTIAL_ID'];
@@ -187,7 +185,9 @@ Afip.prototype.GetServiceTA = async function(service, firstTry = true) {
 	}
 	catch(e){
 		console.log(e);
-		throw(e);
+		if(!e.message === 'The specified key does not exist.') {
+			throw(e);
+		}
 	}
 
 	// If have access to token authorization

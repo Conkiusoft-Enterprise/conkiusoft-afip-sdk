@@ -43,7 +43,7 @@ module.exports = class S3Connection {
 
             if(response && response.Body){
                 const token = await response.Body.transformToString();
-                return JSON.parse(token);
+                return token ? JSON.parse(token) : null;
             }
             
             throw("No fue posible acceder a al archivo afip token")
