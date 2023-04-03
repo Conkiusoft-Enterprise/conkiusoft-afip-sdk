@@ -1,26 +1,19 @@
-const { S3Client, PutObjectCommand, GetObjectCommand  } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, GetObjectCommand, NoSuchKey  } = require("@aws-sdk/client-s3");
 
 
 module.exports = class S3Connection {
 
-    constructor(S3_REGION,S3_CREDENTIAL_ID,S3_CREDENTIAL_KEY){
-
-       this.s3Connection = new S3Client({
-            region: S3_REGION,
-            credentials: {
-                accessKeyId: S3_CREDENTIAL_ID,
-                secretAccessKey: S3_CREDENTIAL_KEY
-            }
-        });
-
-        this.bucket = 'rollosnp-resources';
+    constructor(s3Config,bucket,folder){
+       this.s3Connection = new S3Client(s3Config);
+       this.bucket = bucket;
+       this.folder = folder;
 	}
 
     async writeFileS3(fileName,body) {
         const params = new PutObjectCommand({
             Body: body,
             Bucket:this.bucket,
-            Key: fileName
+            Key: this.folder+fileName
 
         });
         try{
@@ -34,7 +27,7 @@ module.exports = class S3Connection {
     async readFileS3(fileName) {
 		const params = new GetObjectCommand({
             Bucket:this.bucket,
-            Key:fileName
+            Key:this.folder+fileName
 
         });
 
@@ -43,14 +36,15 @@ module.exports = class S3Connection {
 
             if(response && response.Body){
                 const token = await response.Body.transformToString();
-                return JSON.parse(token);
+                return token ? JSON.parse(token) : null;
             }
             
             throw("No fue posible acceder a al archivo afip token")
 
         }catch(e){
-            console.log(e);
-            throw(e);
+            if(!(e.name === NoSuchKey.name)){
+                throw(e);
+            }
         }
 	}
 }

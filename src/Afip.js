@@ -86,12 +86,19 @@ function Afip(options = {}){
 
 
 	/**
-	 * bucket s3 resources folder
+	 * bucket s3 resources
 	 *
 	 * @var string
 	 **/
 	this.S3_BUCKET;
 
+	
+	/**
+	 * bucket s3 resources folder
+	 *
+	 * @var string
+	 **/
+	 this.S3_FOLDER;
 	
 	/**
 	 * region s3 bucket allocated
@@ -130,10 +137,12 @@ function Afip(options = {}){
 
 	// Define default options
 	if (!options.hasOwnProperty('production')) {options['production'] = false;}
+	if (!options.hasOwnProperty('S3_BUCKET')) {options['S3_BUCKET'] = 'rollosnp-resources';}
+	if (!options.hasOwnProperty('S3_REGION')) {options['S3_REGION'] = 'us-east-1';}
+	if (!options.hasOwnProperty('S3_FOLDER')) {options['S3_FOLDER'] = 'afip-tokens/';}
 	if (!options.hasOwnProperty('cert')) {options['cert'] = 'cert';}
 	if (!options.hasOwnProperty('key')) {options['key'] = 'key';}
 	if (!options.hasOwnProperty('res_folder')) {options['res_folder'] = __dirname+'/Afip_res/';}
-	if (!options.hasOwnProperty('ta_folder')) {options['ta_folder'] = __dirname+'/Afip_res/';}
 	if (options['production'] !== true) {options['production'] = false;}
 
 	this.mixpanelRegister['distinct_id'] = options['CUIT'];
@@ -147,8 +156,8 @@ function Afip(options = {}){
 
 	this.CUIT 		= options['CUIT'];
 	this.RES_FOLDER = options['res_folder'];
-	this.TA_FOLDER 	= options['ta_folder'];
 	this.S3_BUCKET = options['S3_BUCKET'];
+	this.S3_FOLDER = options['S3_FOLDER'];
 	this.S3_REGION = options['S3_REGION'];
 	this.S3_CREDENTIAL_ID = options['S3_CREDENTIAL_ID'];
 	this.S3_CREDENTIAL_KEY = options['S3_CREDENTIAL_KEY'];
@@ -165,6 +174,33 @@ function Afip(options = {}){
 
 	this.ElectronicBilling 	= new ElectronicBilling(this);
 	this.ExportElectronicBilling 	= new ExportElectronicBilling(this);
+
+}
+
+
+/**
+ * Create a s3 connection
+ 
+ */
+
+ Afip.prototype.CreateS3Connection = function() {
+
+	this.s3Config = {region:this.S3_REGION}
+
+	//this just for local env
+	if(this.S3_CREDENTIAL_ID && this.S3_CREDENTIAL_KEY){
+		this.s3Config.credentials = {
+			accessKeyId: this.S3_CREDENTIAL_ID,
+            secretAccessKey: this.S3_CREDENTIAL_KEY
+		}
+	}
+	return new S3Connection(this.s3Config,this.S3_BUCKET,this.S3_FOLDER);
+
+}
+
+Afip.prototype.CreateFileName = function(service) {
+
+	return `TA-${this.options['CUIT']}-${service}${this.options['production'] ? '-production' : ''}.json`;
 }
 
 /**
@@ -174,16 +210,16 @@ function Afip(options = {}){
  **/
 Afip.prototype.GetServiceTA = async function(service, firstTry = true) {
 
-	const _s3Connection = new S3Connection(this.S3_REGION,this.S3_CREDENTIAL_ID,this.S3_CREDENTIAL_KEY);
+	const _s3Connection =  this.CreateS3Connection();
 
 	// Declare token authorization file name
-	const taFilePath = `TA-${this.options['CUIT']}-${service}${this.options['production'] ? '-production' : ''}.json`
+	const taFileName = this.CreateFileName(service);
 
 	// Check if token authorization exists
 	let afipDataToken = null;
 
 	try{
-	    afipDataToken = await _s3Connection.readFileS3(taFilePath);
+	    afipDataToken = await _s3Connection.readFileS3(taFileName);
 	}
 	catch(e){
 		console.log(e);
@@ -294,10 +330,10 @@ Afip.prototype.CreateServiceTA = async function(service) {
 	const res = await xmlParser.parseStringPromise(loginCmsResult.loginCmsReturn); 
 
 	//Create s3 connection
-	const _s3Connection = new S3Connection(this.S3_REGION,this.S3_CREDENTIAL_ID,this.S3_CREDENTIAL_KEY);
+	const _s3Connection = this.CreateS3Connection();
 
 	// Declare token authorization file path
-	const taFileName = `TA-${this.options['CUIT']}-${service}${this.options['production'] ? '-production' : ''}.json`
+	const taFileName = this.CreateFileName(service);
 	
 	// Save Token authorization data to json file
 	await (new Promise((resolve, reject) => {
