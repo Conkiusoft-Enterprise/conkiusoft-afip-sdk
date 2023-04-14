@@ -42,14 +42,20 @@ npm install -save conkiusoft-afipsdk
 import Afip = require("conkiusoft-afipsdk");
 ````
 Luego instanciar el objeto Afip, para eso se le pasan un objeto como parametro con algunas propiedades:
+
 Propiedades del objeto:
 
 CUIT [Obligatorio]: el numero de cuit.
+
 S3_BUCKET [Opcional]: Bucket de S3 donde va a estar localizado la carpeta que almacena los tokens
+
 S3_FOLDER [Opcional]: Carpeta que almacena los tokens
+
 S3_REGION [Opcional]: Carpeta que almacena los tokens
 S3_CREDENTIAL_ID [LOCAL ES REQUERIDO- DEPLOYADO NO SE NECESITA].
+
 S3_CREDENTIAL_KEY [LOCAL ES REQUERIDO- DEPLOYADO NO SE NECESITA].
+
 
 ````js
 const afip = new Afip({ CUIT: process.env.AFIP_CUIT});
