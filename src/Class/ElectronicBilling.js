@@ -1,9 +1,9 @@
 const AfipWebService = require('./AfipWebService');
 
 /**
- * SDK for AFIP Electronic Billing (wsfe1)
+ * SDK para generar Facturas A  Y B (AFIP Electronic Billing) (wsfe1)
  * 
- * @link http://www.afip.gob.ar/fe/documentos/manual_desarrollador_COMPG_v2_10.pdf WS Specification
+ * @link https://www.afip.gob.ar/fe/ayuda/documentos/wsfev1-COMPG.pdf WS Specification
  **/
 module.exports = class ElectronicBilling extends AfipWebService {
 	constructor(afip){
@@ -20,16 +20,16 @@ module.exports = class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Gets last voucher number 
+	 * Obtener ultimo comprobante  
 	 * 
-	 * Asks to Afip servers for number of the last voucher created for
-	 * certain sales point and voucher type {@see WS Specification 
-	 * item 4.15} 
+	 * Retorna el ultimo comprobante autorizado para el tipo de comprobante y punto de venta  {@see WS Specification 
+	 * item 2.16} 
 	 *
-	 * @param int salesPoint 	Sales point to ask for last voucher  
-	 * @param int type 		Voucher type to ask for last voucher 
+	 * @param {int} salesPoint 	Punto de venta del ultimo comprobante 
+	 * @param {int} type 		Tipo de comprobante del ultimo voucher
 	 *
-	 * @return int 
+	 * @return {int} Retorna el último número de comprobante registrado para el punto de venta y tipo de comprobante
+	 * enviado
 	 **/
 	async getLastVoucher(salesPoint, type) {
 		const req = {
@@ -41,22 +41,24 @@ module.exports = class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Create a voucher from AFIP
+	 * Autorización de comprobantes electrónicos por CAE
 	 *
-	 * Send to AFIP servers request for create a voucher and assign 
-	 * CAE to them {@see WS Specification item 4.1}
+	 * Envía a los servidores de AFIP una solicitud para crear un comprobante
+	 * y asignar un CAE  {@see https://www.afip.gob.ar/fe/ayuda/documentos/wsfev1-COMPG.pdf Specification item 2.1}
+	 *
+	 * @param {object} data datos del comprobante (Ver specification para los datos a enviar del comprobante) {@see  https://www.afip.gob.ar/fe/ayuda/documentos/wsfev1-COMPG.pdf Specification
+	 * 	item 2.2.2}
+	 * @param {bool}  returnResponse si es seteado a TRUE retorna la respuesta completa
+	 * 	de AFIP
+	 *
+	 * @return {array} Retorna la información del comprobante de ingreso agregándole el CAE otorgado. Ante cualquier
+     *	anomalía se retorna un código de error cancelando la ejecución del WS. 
+	 *  Si returnResponse se establece en false devuelve: 
+	 * 	[CAE : CAE assigned to voucher, CAEFchVto : Fecha de Expiracion
+	 * 	para el CAE (yyyy-mm-dd)] si no retorna la informacion completa del comprobante en
+	 * 	AFIP {@see https://www.afip.gob.ar/fe/ayuda/documentos/wsfev1-COMPG.pdf Specification item 2.2.3}
 	 * 
-	 * @param array data Voucher parameters {@see WS Specification 
-	 * 	item 4.1.3}, some arrays were simplified for easy use {@example 
-	 * 	examples/createVoucher.js Example with all allowed
-	 * 	 attributes}
-	 * @param bool returnResponse if is TRUE returns complete response  
-	 * 	from AFIP
 	 * 
-	 * @return array if returnResponse is set to false returns 
-	 * 	[CAE : CAE assigned to voucher, CAEFchVto : Expiration date 
-	 * 	for CAE (yyyy-mm-dd)] else returns complete response from 
-	 * 	AFIP {@see WS Specification item 4.1.3}
 	 **/
 	async createVoucher(data, returnResponse = false) {
 		const req = {
@@ -109,17 +111,17 @@ module.exports = class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Create next voucher from AFIP
+	 * Crea un proximo comprobante en afip
 	 *
-	 * This method combines Afip.getLastVoucher and Afip.createVoucher
-	 * for create the next voucher
+	 * Este metodo combina Afip.getLastVoucher y  Afip.createVoucher
+	 * para crear el siguiente voucher
 	 *
-	 * @param array data Same to data in Afip.createVoucher except that
-	 * 	don't need CbteDesde and CbteHasta attributes
+	 * @param {object} data misma data que se usa en Afip.createVoucher excepto que no 
+	 * 	necesita los atributos CbteDesde y CbteHasta 
 	 *
-	 * @return array [CAE : CAE assigned to voucher, CAEFchVto : Expiration 
-	 * 	date for CAE (yyyy-mm-dd), voucherNumber : Number assigned to 
-	 * 	voucher]
+	 * @return {array} [CAE : CAE asignado al voucher, CAEFchVto : Fecha
+	 * 	de expiración del CAE (yyyy-mm-dd), voucherNumber : Numero asignado al
+	 * 	comprobante]
 	 **/
 	async createNextVoucher(data) {
 		const lastVoucher = await this.getLastVoucher(data['PtoVta'], data['CbteTipo']);
@@ -135,19 +137,21 @@ module.exports = class ElectronicBilling extends AfipWebService {
 		return res;
 	}
 
+
 	/**
-	 * Get complete voucher information
+	 * Obtiene la informacion completa de un comprobante
 	 *
-	 * Asks to AFIP servers for complete information of voucher {@see WS 
-	 * Specification item 4.19}
+	 * Retorna los detalles de un comprobante ya enviado y autorizado {@see https://www.afip.gob.ar/fe/ayuda/documentos/wsfev1-COMPG.pdf
+	 * Specification item 2.2 }
 	 *
-	 * @param int number 		Number of voucher to get information
-	 * @param int salesPoint 	Sales point of voucher to get information
-	 * @param int type 			Type of voucher to get information
+	 * @param {int} number 		Numero de comprobante del cual se quiere información
+	 * @param {int} salesPoint 	Punto de venta del comprobante del cual se quiere información
+	 * @param {int} type 		Tipo de comprobante del cual se quiere información
 	 *
-	 * @return array|null returns array with complete voucher information 
-	 * 	{@see WS Specification item 4.19} or null if there not exists 
-	 **/
+	 * @return {Object|null} array con la informacion completa del comprobante
+	 * 	{@see https://www.afip.gob.ar/fe/ayuda/documentos/wsfev1-COMPG.pdf Specification item 2.2.3 } or null si no existe
+	 * 
+	 **/ 
 	async getVoucherInfo(number, salesPoint, type) {
 		const req = {
 			'FeCompConsReq' : {
@@ -164,87 +168,89 @@ module.exports = class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Asks to AFIP Servers for sales points availables {@see WS 
-	 * Specification item 4.11}
+	 * Obtener listado de puntos de venta disponibles {@see WS 
+	 * Specification item 2.12}
 	 *
-	 * @return array All sales points availables
+	 * @return {array} Listado de todos los puntos de venta
 	 **/
 	async getSalesPoints() {
 		return (await this.executeRequest('FEParamGetPtosVenta')).ResultGet.PtoVenta;
 	}
 
 	/**
-	 * Asks to AFIP Servers for voucher types availables {@see WS 
-	 * Specification item 4.4}
+	 * Obtener tipos de comprobantes {@see WS 
+	 * Specification item 2.5}
 	 *
-	 * @return array All voucher types availables
+	 * @return {array} Listado de todos los tipos de comprobantes disponibles
 	 **/
 	async getVoucherTypes() {
 		return (await this.executeRequest('FEParamGetTiposCbte')).ResultGet.CbteTipo;
 	}
 
 	/**
-	 * Asks to AFIP Servers for voucher concepts availables {@see WS 
-	 * Specification item 4.5}
+	 * Este método devuelve los tipos de conceptos posibles en este WS {@see WS 
+	 * Specification item 2.6}
 	 *
-	 * @return array All voucher concepts availables
+	 * @return {array} Listado de todos los tipos de concepto disponibles
 	 **/
 	async getConceptTypes() {
 		return (await this.executeRequest('FEParamGetTiposConcepto')).ResultGet.ConceptoTipo;
 	}
 
 	/**
-	 * Asks to AFIP Servers for document types availables {@see WS 
-	 * Specification item 4.6}
+	 * Obtener todos los tipos de documento disponibles {@see WS 
+	 * Specification item 2.7}
 	 *
-	 * @return array All document types availables
+	 * @return {array} Listado de todos los tipos de documento disponibles
 	 **/
 	async getDocumentTypes() {
 		return (await this.executeRequest('FEParamGetTiposDoc')).ResultGet.DocTipo;
 	}
 
 	/**
-	 * Asks to AFIP Servers for aliquot availables {@see WS 
-	 * Specification item 4.7}
+	 * Mediante este método se obtiene la totalidad de alícuotas de IVA posibles de uso en el presente
+	 * WS, detallando código y descripción.
+	 * {@see WS  Specification item 2.8}
 	 *
-	 * @return array All aliquot availables
+	 * @return {array} Listado de todos las alícuotas de IVA posibles disponibles
 	 **/
 	async getAliquotTypes() {
 		return (await this.executeRequest('FEParamGetTiposIva')).ResultGet.IvaTipo;
 	}
 
 	/**
-	 * Asks to AFIP Servers for currencies availables {@see WS 
-	 * Specification item 4.8}
+	 * Obtener Monedas disponibles en el presente WS, indicando id y
+	 * descripción de cada una {@see WS Specification item 2.9}
 	 *
-	 * @return array All currencies availables
+	 * @return {array} Listado de todos los tipos de monedas disponibles
 	 **/
 	async getCurrenciesTypes() {
 		return (await this.executeRequest('FEParamGetTiposMonedas')).ResultGet.Moneda;
 	}
 
 	/**
-	 * Asks to AFIP Servers for voucher optional data available {@see WS 
-	 * Specification item 4.9}
+	 * Este método permite consultar los códigos y descripciones de los tipos de datos Opcionales que se
+	 * encuentran habilitados para ser usados en el WS. {@see WS Specification item 2.10}
 	 *
-	 * @return array All voucher optional data available
+	 * @return {array} Listado de todos los tipos de datos Opcionales disponibles
 	 **/
 	async getOptionsTypes() {
 		return (await this.executeRequest('FEParamGetTiposOpcional')).ResultGet.OpcionalTipo;
 	}
 
 	/**
-	 * Asks to AFIP Servers for tax availables {@see WS 
-	 * Specification item 4.10}
+	 * Obtener los posibles códigos de tributos que puede contener un comprobante y su descripción {@see WS 
+	 * Specification item 2.11}
 	 *
-	 * @return array All tax availables
+	 * @return {array} Listado de todos los tipos de tributos disponibles
 	 **/
 	async getTaxTypes() {
 		return (await this.executeRequest('FEParamGetTiposTributos')).ResultGet.TributoTipo;
 	}
 
 	/**
-	 * Asks to web service for servers status {@see WS 
+	 * @ignore
+	 * Testeo de servicio {@see WS 
 	 * Specification item 4.14}
 	 *
 	 * @return object { AppServer : Web Service status, 
@@ -256,6 +262,7 @@ module.exports = class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
+	 * @ignore
 	 * Change date from AFIP used format (yyyymmdd) to yyyy-mm-dd
 	 *
 	 * @param string|int date to format
@@ -268,6 +275,7 @@ module.exports = class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
+	 * @ignore
 	 * Sends request to AFIP servers
 	 * 
 	 * @param string 	operation 	SOAP operation to do 
@@ -287,6 +295,7 @@ module.exports = class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
+	 * @ignore
 	 * Make default request parameters for most of the operations
 	 * 
 	 * @param string operation SOAP Operation to do 
@@ -311,6 +320,7 @@ module.exports = class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
+	 * @ignore
 	 * Check if occurs an error on Web Service request
 	 * 
 	 * @param string 	operation 	SOAP operation to check 
